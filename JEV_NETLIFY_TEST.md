@@ -41,7 +41,7 @@ https://<your-netlify-site>.netlify.app/test.html
 JEV_API_KEY=<your key>
 JEV_API_ENDPOINT=https://api.typesafe.ai/v1/systemone
 JEV_MODEL=jev-latest
-JEV_SPAM_THRESHOLD=0.9
+JEV_SPAM_THRESHOLD=0.85
 ```
 
 首次验证建议清空：
@@ -80,13 +80,13 @@ LLM_API_KEY
 Netlify Function 日志应出现类似：
 
 ```text
-Jev 判定为 SPAM (score=0.9342, threshold=0.9, model="...")
+Jev 判定为 SPAM (score=0.9342, threshold=0.85, model="...")
 ```
 
 或：
 
 ```text
-Jev 判定为 HAM (score=0.1837, threshold=0.9, model="...")
+Jev 判定为 HAM (score=0.1837, threshold=0.85, model="...")
 ```
 
 Jev 请求失败或返回格式异常时，`postCheckSpam` 沿用 Twikoo 的失败放行策略，不会把评论误标为垃圾。
