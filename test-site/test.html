@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Twikoo 2.0.7 + Jev 验证</title>
+  <style>
+    body { max-width: 860px; margin: 40px auto; padding: 0 20px; font-family: system-ui, sans-serif; }
+    code { background: #f3f3f3; padding: 2px 5px; border-radius: 4px; }
+    .note { margin-bottom: 24px; line-height: 1.7; }
+  </style>
+</head>
+<body>
+  <h1>Twikoo 2.0.7 + Jev 验证</h1>
+  <div class="note">
+    <p>评论前端和后端都由本分支源码构建，基线为 <code>Twikoo 2.0.7</code>。</p>
+    <p>后端地址自动使用当前 Netlify Site：<code id="env"></code></p>
+  </div>
+  <div id="twikoo"></div>
+
+  <script src="/twikoo.min.js"></script>
+  <script>
+    document.getElementById('env').textContent = window.location.origin;
+    twikoo.init({
+      envId: window.location.origin,
+      el: '#twikoo'
+    });
+  </script>
+</body>
+</html>

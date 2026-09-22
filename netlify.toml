@@ -1,0 +1,26 @@
+[build]
+  command = "pnpm -r --if-present --filter 'twikoo-netlify...' run build && pnpm --filter twikoo build && cp packages/client/dist/twikoo.min.js test-site/twikoo.min.js"
+  publish = "test-site"
+
+[build.environment]
+  # The 2.0.7 monorepo build toolchain declares Node >= 26.
+  # The function runtime can still be forced to Node 22 in Netlify UI with:
+  # AWS_LAMBDA_JS_RUNTIME=nodejs22.x
+  NODE_VERSION = "26"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/"
+  to = "/.netlify/functions/twikoo"
+  status = 200
+  force = true
+
+[[headers]]
+  for = "/*"
+    [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type"
+    Access-Control-Allow-Methods = "*"

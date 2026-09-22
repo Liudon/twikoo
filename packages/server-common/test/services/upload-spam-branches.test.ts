@@ -272,6 +272,166 @@ describe("postCheckSpam 分支（services/spam）", () => {
     expect(result).toBe(true);
   });
 
+  it("Jev：noul 达到阈值 → true，并发送正文/昵称/网址", async () => {
+    let captured:
+      | {
+          url: string;
+          data: unknown;
+          config: unknown;
+        }
+      | undefined;
+    setLibImporter(async (specifier) => {
+      if (specifier === "axios") {
+        return {
+          default: {
+            /**
+             * Jev POST 替身
+             */
+            post: async (url: string, data?: unknown, config?: unknown) => {
+              captured = { url, data, config };
+              return {
+                data: {
+                  model: "jev-1.13.0",
+                  answers: { spam: { type: "noul", noul: 0.93 } },
+                },
+              };
+            },
+            /** GET 占位 */
+            get: async () => ({ data: {} }),
+            /** PUT 占位 */
+            put: async () => ({ data: {} }),
+          },
+        };
+      }
+      throw new Error(`unexpected ${specifier}`);
+    });
+
+    const result = await postCheckSpam({
+      comment: {
+        _id: "x",
+        nick: "SEO Agency",
+        link: "https://spam.test",
+        comment: "<p>文章写得不错</p>",
+      },
+      config: {
+        JEV_API_KEY: "jev_test",
+        JEV_API_ENDPOINT: "https://api.test/v1/systemone",
+        JEV_MODEL: "jev-1.13.0",
+        JEV_SPAM_THRESHOLD: "0.9",
+      },
+      caps,
+      logger: noopLogger,
+    });
+
+    expect(result).toBe(true);
+    expect(captured?.url).toBe("https://api.test/v1/systemone");
+    expect(captured?.data).toMatchObject({
+      model: "jev-1.13.0",
+      state: {
+        comment: "<p>文章写得不错</p>",
+        nickname: "SEO Agency",
+        website: "https://spam.test",
+      },
+      questions: { spam: { type: "noul" } },
+    });
+    expect(captured?.config).toMatchObject({
+      headers: {
+        Authorization: "Bearer jev_test",
+        "Content-Type": "application/json",
+      },
+      timeout: 30000,
+    });
+  });
+
+  it("Jev：noul 低于阈值 → false", async () => {
+    setLibImporter(async (specifier) => {
+      if (specifier === "axios") {
+        return {
+          default: {
+            /** Jev POST 替身 */
+            post: async () => ({
+              data: {
+                model: "jev-1.13.0",
+                answers: { spam: { type: "noul", noul: 0.42 } },
+              },
+            }),
+            /** GET 占位 */
+            get: async () => ({ data: {} }),
+            /** PUT 占位 */
+            put: async () => ({ data: {} }),
+          },
+        };
+      }
+      throw new Error(`unexpected ${specifier}`);
+    });
+
+    const result = await postCheckSpam({
+      comment: { _id: "x", nick: "reader", comment: "谢谢分享" },
+      config: { JEV_API_KEY: "jev_test", JEV_SPAM_THRESHOLD: "0.8" },
+      caps,
+      logger: noopLogger,
+    });
+
+    expect(result).toBe(false);
+  });
+
+  it("Jev：同时配置 LLM 时优先使用 Jev", async () => {
+    setLibImporter(async (specifier) => {
+      expect(specifier).toBe("axios");
+      return {
+        default: {
+          /** Jev POST 替身 */
+          post: async () => ({
+            data: {
+              model: "jev-1.13.0",
+              answers: { spam: { type: "noul", noul: 0.99 } },
+            },
+          }),
+          /** GET 占位 */
+          get: async () => ({ data: {} }),
+          /** PUT 占位 */
+          put: async () => ({ data: {} }),
+        },
+      };
+    });
+
+    const result = await postCheckSpam({
+      comment: { _id: "x", nick: "SEO", comment: "buy now" },
+      config: { JEV_API_KEY: "jev_test", LLM_API_KEY: "llm_test" },
+      caps,
+      logger: noopLogger,
+    });
+
+    expect(result).toBe(true);
+  });
+
+  it("Jev：返回格式异常 → undefined（失败放行）", async () => {
+    setLibImporter(async (specifier) => {
+      if (specifier === "axios") {
+        return {
+          default: {
+            /** Jev POST 替身：缺 noul */
+            post: async () => ({ data: { answers: { spam: { type: "noul" } } } }),
+            /** GET 占位 */
+            get: async () => ({ data: {} }),
+            /** PUT 占位 */
+            put: async () => ({ data: {} }),
+          },
+        };
+      }
+      throw new Error(`unexpected ${specifier}`);
+    });
+
+    const result = await postCheckSpam({
+      comment: { _id: "x", nick: "reader", comment: "hello" },
+      config: { JEV_API_KEY: "jev_test" },
+      caps,
+      logger: noopLogger,
+    });
+
+    expect(result).toBeUndefined();
+  });
+
   it("空配置 → undefined（无检测器）", async () => {
     const result = await postCheckSpam({
       comment: { _id: "x", mail: "z@t.com" },
